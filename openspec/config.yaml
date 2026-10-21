@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Teaching project for the "AI for Web Dev" course. There are no real users: roles are simulated
+  personas, and README.md's teaching narrative (MCP 2026-07-28, RFC 9728 discovery, the 401 challenge,
+  audience checks) must stay accurate after every change.
+  Three environments (development = local only; staging and production = Cloudflare). Wrangler vars
+  and bindings are not inherited by env.* blocks, so every new var or binding goes in all three
+  blocks of wrangler.jsonc and in the Bindings type in src/index.ts.
+  compatibility_date must not exceed what the installed Wrangler's workerd supports (currently 2026-09-23).
+  The dev-token endpoint must stay development-only and fail closed.
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
