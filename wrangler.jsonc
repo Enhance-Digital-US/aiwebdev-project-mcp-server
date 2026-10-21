@@ -1,0 +1,82 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "issue-tracker-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-23",
+  // Inherited by every environment. The OAuth server fetches Client ID
+  // Metadata Documents, and this flag stops those fetches reaching private addresses.
+  "compatibility_flags": ["global_fetch_strictly_public"],
+
+  // ── Development (top level) ─────────────────────────────────
+  // Used by `pnpm dev` only. Never deploy the top level — always pass
+  // `--env staging` or `--env production`. The database_id below is a
+  // local-only key for .wrangler/state, so an accidental bare
+  // `wrangler deploy` fails instead of shipping dev config.
+  // Secrets for this env live in .dev.vars (gitignored).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "issue-tracker-db",
+      "database_id": "TODO_REPLACE_WITH_ACTUAL_ID"
+    }
+  ],
+  // OAuth grants and tokens (hashed). Local-only id, like the database above.
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "local-oauth-kv" }],
+  "vars": {
+    "ENVIRONMENT": "development",
+    "RESOURCE_URL": "http://localhost:8787/mcp",
+    "AUTH_SERVER_URL": "http://localhost:8787"
+  },
+
+  // `vars`, `d1_databases` and `kv_namespaces` are NOT inherited by environments —
+  // each env below must redeclare them in full.
+  "env": {
+    // ── Staging ───────────────────────────────────────────────
+    // Deployed as `issue-tracker-mcp-staging`.
+    // Secrets: `wrangler secret put <NAME> --env staging` for AUTH_SECRET and
+    // PERSONA_PASSWORD_ADMIN / _MEMBER / _VIEWER.
+    "staging": {
+      "workers_dev": true,
+      "observability": { "enabled": true },
+      // Restore the shared demo project every hour, on the hour.
+      "triggers": { "crons": ["0 * * * *"] },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "issue-tracker-db-staging",
+          "database_id": "TODO_STAGING_DATABASE_ID"
+        }
+      ],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TODO_STAGING_OAUTH_KV_ID" }],
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "RESOURCE_URL": "https://issue-tracker-mcp-staging.YOUR_SUBDOMAIN.workers.dev/mcp",
+        "AUTH_SERVER_URL": "https://issue-tracker-mcp-staging.YOUR_SUBDOMAIN.workers.dev"
+      }
+    },
+
+    // ── Production ────────────────────────────────────────────
+    // Deployed as `issue-tracker-mcp-production`.
+    // Secrets: same names as staging, with different values, so staging
+    // tokens and passwords don't work here.
+    "production": {
+      "workers_dev": true,
+      "observability": { "enabled": true },
+      // Restore the shared demo project every hour, on the hour.
+      "triggers": { "crons": ["0 * * * *"] },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "issue-tracker-db-production",
+          "database_id": "TODO_PRODUCTION_DATABASE_ID"
+        }
+      ],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TODO_PRODUCTION_OAUTH_KV_ID" }],
+      "vars": {
+        "ENVIRONMENT": "production",
+        "RESOURCE_URL": "https://issue-tracker-mcp-production.YOUR_SUBDOMAIN.workers.dev/mcp",
+        "AUTH_SERVER_URL": "https://issue-tracker-mcp-production.YOUR_SUBDOMAIN.workers.dev"
+      }
+    }
+  }
+}

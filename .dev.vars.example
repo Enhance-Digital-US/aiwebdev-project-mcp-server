@@ -1,0 +1,9 @@
+# Copy to .dev.vars for local development (pnpm dev).
+# Staging/production secrets are set with `wrangler secret put AUTH_SECRET --env <env>`.
+AUTH_SECRET=dev-test-secret-do-not-use-in-production
+
+# Persona login passwords (Alice = admin, Bob = member, Carol = viewer).
+# Hosted: `wrangler secret put PERSONA_PASSWORD_ADMIN --env <env>` and so on.
+PERSONA_PASSWORD_ADMIN=change-me-admin
+PERSONA_PASSWORD_MEMBER=change-me-member
+PERSONA_PASSWORD_VIEWER=change-me-viewer

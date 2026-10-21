@@ -1,0 +1,38 @@
+{
+  "name": "issue-tracker-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "echo 'Use pnpm deploy:staging or pnpm deploy:production' && exit 1",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "tail:staging": "wrangler tail --env staging",
+    "tail:production": "wrangler tail --env production",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json",
+    "types": "wrangler types",
+    "db:migrate:local": "wrangler d1 execute DB --local --file=schema.sql",
+    "db:migrate:staging": "wrangler d1 execute DB --env staging --remote --file=schema.sql",
+    "db:migrate:production": "wrangler d1 execute DB --env production --remote --file=schema.sql",
+    "db:reset:local": "wrangler d1 execute DB --local --file=seed.sql",
+    "db:reset:staging": "wrangler d1 execute DB --env staging --remote --file=seed.sql",
+    "db:reset:production": "wrangler d1 execute DB --env production --remote --file=seed.sql",
+    "inspect": "npx -y @modelcontextprotocol/inspector@2.7.0 --config mcp.json",
+    "inspect:cli": "npx -y @modelcontextprotocol/inspector@2.7.0 --cli --config mcp.json --server worker"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^1.2.3",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "hono": "^4.13.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.6",
+    "@cloudflare/workers-types": "^5.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.0.0"
+  }
+}
