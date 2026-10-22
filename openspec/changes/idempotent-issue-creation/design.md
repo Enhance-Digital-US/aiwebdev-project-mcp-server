@@ -55,14 +55,14 @@ Before any code from this change lands, tag the current `main` as `lesson-13`: t
 
 ## Risks / Trade-offs
 
-- [The one-off migration is forgotten on an environment, so `create_issue` with a key fails there] → tasks run it on staging and production and verify the column exists; the README states it.
+- [The one-off migration is forgotten on an environment] → once the new code is deployed there, **every** `create_issue` fails (the INSERT always names `external_id`), and the new `schema.sql` fails too (its index needs the column). Mitigation: migrate before running `schema.sql` and before deploying, as in the Migration Plan; README and ENVIRONMENTS.md state the order.
 - [A replay with different fields silently returns the old issue] → intended (first write wins) and documented; `replayed: true` makes it visible.
 - [Tagging `lesson-13` after this change lands loses the pre-change checkpoint] → tagging is task 1, before any code.
 
 ## Migration Plan
 
 1. Tag `lesson-13` on current `main` and push the tag.
-2. Ship the code and `schema.sql` change, then run the one-off migration on staging, verify, then production.
+2. For each hosted environment, staging first: run the one-off migration, then `db:migrate:<env>`, then deploy the code and verify. Old code ignores the extra column, so migrating first is safe; deploying first is not.
 3. Tag `lesson-16` and push it.
 
 Rollback: revert the code. The column and index can stay; nothing reads them once the code is reverted.

@@ -19,6 +19,7 @@ export interface Issue {
   priority: Priority;
   assignee_id: string | null;
   labels: string[];
+  external_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ interface IssueRow {
   priority: Priority;
   assignee_id: string | null;
   labels: string | null;
+  external_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -180,6 +182,10 @@ export class Store {
     return { issueCount };
   }
 
+  // `external_id` is a caller-chosen idempotency key, unique per project. A retry
+  // with a key already used in that project returns the first issue unchanged
+  // (first write wins) with `replayed: true`. The role check stays first, so a
+  // replay is authorized exactly like a new create.
   async createIssue(data: {
     project_id: string;
     title: string;
@@ -187,12 +193,15 @@ export class Store {
     priority?: Priority;
     assignee_id?: string;
     labels?: string[];
-  }): Promise<Issue> {
+    external_id?: string;
+  }): Promise<{ issue: Issue; replayed: boolean }> {
     requireScope(this.auth, 'admin', 'member');
     const id = crypto.randomUUID();
-    await this.db
+    const insert = this.db
       .prepare(
-        'INSERT INTO issues (id, project_id, title, description, priority, assignee_id, labels) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        `INSERT INTO issues (id, project_id, title, description, priority, assignee_id, labels, external_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT (project_id, external_id) DO NOTHING`,
       )
       .bind(
         id,
@@ -202,9 +211,20 @@ export class Store {
         data.priority ?? 'medium',
         data.assignee_id ?? null,
         data.labels ? JSON.stringify(data.labels) : null,
-      )
-      .run();
-    return (await this.getIssue(id))!;
+        data.external_id ?? null,
+      );
+
+    // Insert-or-skip is atomic, so two concurrent retries can't both create a row.
+    // Without a key there is never a conflict: NULLs are distinct in a unique index.
+    const { meta } = await insert.run();
+    if (meta.changes > 0) {
+      return { issue: (await this.getIssue(id))!, replayed: false };
+    }
+    const existing = await this.db
+      .prepare('SELECT * FROM issues WHERE project_id = ? AND external_id = ?')
+      .bind(data.project_id, data.external_id)
+      .first<IssueRow>();
+    return { issue: parseIssueRow(existing!), replayed: true };
   }
 
   async getIssue(id: string): Promise<Issue | null> {

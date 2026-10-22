@@ -21,6 +21,13 @@ export function registerIssueTools(server: McpServer, store: Store, bus?: Server
         priority: PriorityEnum.optional().describe('Issue priority'),
         assignee_id: z.string().optional().describe('User ID to assign the issue to'),
         labels: z.array(z.string()).optional().describe('Labels to tag the issue with'),
+        external_id: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            'Optional idempotency key chosen by the caller. Retrying with the same key in the same project returns the first issue instead of creating another.',
+          ),
       }),
     },
     async (input) => {
@@ -28,9 +35,10 @@ export function registerIssueTools(server: McpServer, store: Store, bus?: Server
       if (!project) {
         return { content: [{ type: 'text' as const, text: `Project ${input.project_id} not found` }], isError: true };
       }
-      const issue = await store.createIssue(input);
-      notifyBoardChanged(input.project_id);
-      return { content: [{ type: 'text' as const, text: JSON.stringify(issue, null, 2) }] };
+      const { issue, replayed } = await store.createIssue(input);
+      // A replay changed nothing, so subscribers to the board don't need a nudge.
+      if (!replayed) notifyBoardChanged(input.project_id);
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ ...issue, replayed }, null, 2) }] };
     },
   );
 

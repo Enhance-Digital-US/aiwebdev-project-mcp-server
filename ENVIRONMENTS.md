@@ -140,7 +140,7 @@ pnpm db:migrate:staging
 pnpm db:reset:staging
 ```
 
-The first command runs `schema.sql` against the remote staging database. Every statement uses `IF NOT EXISTS`, so running it again is harmless. The second loads the demo project from `seed.sql`. After the first deploy, the hourly cron keeps it in that state.
+The first command runs `schema.sql` against the remote staging database. Every statement uses `IF NOT EXISTS`, so running it again is harmless once the database is up to date. A database created before lesson 16 needs the one-off migration in [Schema Changes](#schema-changes) first. The second loads the demo project from `seed.sql`. After the first deploy, the hourly cron keeps it in that state.
 
 ### 4. Set the Secrets
 
@@ -215,7 +215,22 @@ pnpm db:migrate:production   # then deploy:production
 
 If the change touches tables the demo uses, update `seed.sql` in the same commit and check it with `pnpm db:reset:local`. The hourly cron runs `seed.sql` on every hosted environment, so a seed that no longer matches the schema breaks the reset.
 
-`schema.sql` only creates objects that don't exist. It can't alter an existing table. Once you need `ALTER TABLE`, switch to D1 migrations (`wrangler d1 migrations create` / `apply`). D1 migrations record which changes each database has already had.
+`schema.sql` only creates objects that don't exist. It can't alter an existing table. Columns added later ship twice: in `schema.sql` for fresh databases, and as a one-off file in `migrations/` for databases that already exist.
+
+| File | Adds | Needed by |
+|---|---|---|
+| `migrations/0001_issue_external_id.sql` | `issues.external_id` and its unique index | Databases created at lesson 13 or earlier |
+
+For each existing database, run the one-off file **once**, then `schema.sql`, then deploy:
+
+```bash
+npx wrangler d1 execute DB --env staging --remote --file=migrations/0001_issue_external_id.sql
+pnpm db:migrate:staging      # then deploy:staging, test, and repeat for production
+```
+
+The order matters. The new `schema.sql` creates an index on the new column, so it fails with `no such column: external_id` on a database that hasn't been migrated. The new code writes the column on every `create_issue`. Old code ignores the extra column, so migrating first is always safe. Running the one-off file a second time fails harmlessly with `duplicate column name`.
+
+These aren't `wrangler d1 migrations` files: nothing records which databases have had them. Don't run `wrangler d1 migrations apply` on this folder. If this project grows more of them, switch to D1 migrations properly, which track what each database has already applied.
 
 ### Rolling Back
 
@@ -267,6 +282,7 @@ That's the whole procedure, with no script to run. Each token records a fingerpr
 | `/auth/dev-token` returns `500` in development | `AUTH_SECRET` missing from `.dev.vars` | Copy it from `.dev.vars.example` and restart `pnpm dev` |
 | `c.env.X` is `undefined` in staging/production only | Var added at the top level but not under `env.<name>` | Add it to every environment (see above) |
 | `no such table: issues` | Schema not applied to that env's database | `pnpm db:migrate:<env>` |
+| `no such column: external_id` from `create_issue` or `db:migrate:<env>` | Database created before lesson 16 | Run `migrations/0001_issue_external_id.sql` once on it (see [Schema Changes](#schema-changes)) |
 | Login fails with "This app could not be verified." | The client's Client ID Metadata Document couldn't be fetched (it's private, unreachable, or the `global_fetch_strictly_public` flag blocked a private address) | Check the client's `client_id` URL is public. Clients can still register through `/oauth/register` instead. |
 | "Incorrect persona or password." with the right password | That persona's `PERSONA_PASSWORD_*` isn't set in this environment | `npx wrangler secret list --env <env>`, then `secret put` the missing one |
 | `403 Forbidden: unexpected Host` on every request | The request's host doesn't match the host in `RESOURCE_URL` (DNS-rebinding protection) | Set `RESOURCE_URL` to exactly the deployed URL, or to the local port you're actually using |

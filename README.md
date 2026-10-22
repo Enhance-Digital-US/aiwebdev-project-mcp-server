@@ -36,7 +36,8 @@ mcp-server/
 │       └── index.ts         triage, sprint summary, bug report
 ├── test/                    Vitest suites, run inside the Workers runtime (pnpm test)
 ├── openspec/                Specs and in-flight changes (OpenSpec)
-├── schema.sql               5 tables, 5 indexes (D1-compatible)
+├── schema.sql               5 tables, 6 indexes (D1-compatible)
+├── migrations/              One-off ALTERs for databases created by older lessons
 ├── seed.sql                 Shared demo project for the personas
 ├── wrangler.jsonc            Cloudflare Workers config
 ├── mcp.json                 MCP Inspector config
@@ -76,6 +77,8 @@ cp .dev.vars.example .dev.vars
 ```bash
 pnpm db:migrate:local
 ```
+
+> **Upgrading a local database from lesson 13 or earlier?** Run `npx wrangler d1 execute DB --local --file=migrations/0001_issue_external_id.sql` once first. Otherwise `db:migrate:local` fails with `no such column: external_id`. See [Idempotent issue creation](#idempotent-issue-creation-external_id).
 
 ### 4. Start the Dev Server
 
@@ -188,12 +191,31 @@ To switch persona, remove the server's authentication in `/mcp` (or re-add the s
 | Tool | Description | MCP Feature |
 |------|-------------|-------------|
 | `create_project` | Create a project (creator becomes admin) | RBAC + membership bootstrap |
-| `create_issue` | Create issue with title, priority, labels | Basic tool with Zod schema |
+| `create_issue` | Create issue with title, priority, labels; optional `external_id` makes retries safe | Zod schema + idempotency key |
 | `update_issue` | Update any issue field | Partial update schema |
 | `search_issues` | Full-text search across issues | Structured results |
 | `bulk_update_status` | Change status of multiple issues | Batch operation |
 | `delete_project` | Delete a project and all its data | **MRTR** — destructive action confirmation |
 | `generate_sprint_report` | Generate a sprint report | **Progress notifications** via `progressToken` |
+
+### Idempotent issue creation (`external_id`)
+
+Durable workflow engines (lesson 16) retry a step that failed or timed out, so the same `create_issue` can arrive twice, sometimes at the same moment. Without help, every retry files another issue.
+
+`create_issue` takes an optional `external_id`: a key the **caller** picks, such as the workflow instance id. Within one project:
+
+- The first call with a key creates the issue and returns it with `"replayed": false`.
+- Any later call with the same key returns **that same issue, unchanged**, with `"replayed": true`. If the retry sends a different title or priority, they're ignored: the first write wins, which is the usual idempotency-key contract.
+- The same key in a different project is a different issue. Calls without `external_id` are never deduplicated, so they behave exactly as before.
+- A replay is authorized like a new create. Carol (viewer) gets `Forbidden`, not the existing issue.
+
+```json
+{ "id": "af73…", "title": "Login button broken", "external_id": "wf-123", "replayed": true, "…": "…" }
+```
+
+The database enforces this, not the code. A unique index on `(project_id, external_id)` plus `INSERT … ON CONFLICT DO NOTHING` means two concurrent retries can't both insert. A "look it up, then insert" check could let both through. Every issue in tool results and resources includes its `external_id` (or `null`), so a caller can match an issue back to the request that created it.
+
+> **Databases from lesson 13 or earlier** need a one-off migration, run **before** `db:migrate:<env>` and before deploying this code: `wrangler d1 execute DB [--local | --env <env> --remote] --file=migrations/0001_issue_external_id.sql`. Until then, every `create_issue` fails with `no such column: external_id`. Run it only once per database; a second run fails with `duplicate column name`. Details in [ENVIRONMENTS.md](ENVIRONMENTS.md#schema-changes).
 
 ### Resources (2 static + 3 templates)
 
@@ -437,7 +459,8 @@ See [`MIGRATION.md`](./MIGRATION.md) for a detailed migration guide with before/
 | `src/resources/issues.ts` | Issue list, issue detail with comments |
 | `src/resources/projects.ts` | Project list, project board (grouped by status), activity feed |
 | `src/prompts/index.ts` | Triage, sprint summary, bug report prompts |
-| `schema.sql` | 5 tables, 5 indexes — D1-compatible SQLite schema |
+| `schema.sql` | 5 tables, 6 indexes — D1-compatible SQLite schema |
+| `migrations/0001_issue_external_id.sql` | One-off: adds `issues.external_id` to databases created before lesson 16 |
 | `seed.sql` | The shared demo project (`proj-demo`) loaded by every reset |
 | `test/` | Vitest suites: routing, personas, demo data, OAuth wiring, end-to-end login |
 

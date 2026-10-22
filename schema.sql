@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS issues (
     CHECK (priority IN ('critical', 'high', 'medium', 'low')),
   assignee_id TEXT,
   labels TEXT,
+  external_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -49,5 +50,6 @@ CREATE TABLE IF NOT EXISTS activity (
 CREATE INDEX IF NOT EXISTS idx_issues_project ON issues(project_id);
 CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(project_id, status);
 CREATE INDEX IF NOT EXISTS idx_issues_assignee ON issues(assignee_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_issues_external_id ON issues(project_id, external_id);
 CREATE INDEX IF NOT EXISTS idx_comments_issue ON comments(issue_id);
 CREATE INDEX IF NOT EXISTS idx_activity_project ON activity(project_id, created_at DESC);
