@@ -3,7 +3,7 @@
 ## 1. Preconditions
 
 - [x] 1.1 Confirm `add-simulated-roles-oauth` is archived (`openspec list` no longer shows it); verify its `mcp-authorization` and `demo-data` specs exist under `openspec/specs/`
-- [ ] 1.2 Tag the current `main` as `lesson-13` and push the tag (design §5); verify `git ls-remote --tags origin` lists `lesson-13` at the commit before any code from this change
+- [x] 1.2 Tag the current `main` as `lesson-13` and push the tag (design §5); verify `git ls-remote --tags origin` lists `lesson-13` at the commit before any code from this change
 
 ## 2. Idempotent creation
 
@@ -15,5 +15,6 @@
 ## 3. Documentation and rollout
 
 - [x] 3.1 Document `external_id`, `replayed`, and why durable callers need them in the README's tool reference, plus the one-off migration step; verify the README's teaching narrative still reads correctly end to end
-- [ ] 3.2 Run the one-off migration on staging, then production; verify on each that `create_issue` with a key, called twice, returns `replayed: true` the second time
+- [x] 3.2 Run the one-off migration on staging, then production; verify on each that `create_issue` with a key, called twice, returns `replayed: true` the second time
+  - Neither hosted environment existed before this change, so both were provisioned fresh and `schema.sql` created `external_id` directly; the one-off migration was not needed. Verified on both through the real persona login: first call `replayed: false`, retry `replayed: true` with the same id and the first title, viewer refused.
 - [ ] 3.3 Tag `main` as `lesson-16` and push the tag; verify `git ls-remote --tags origin` lists both `lesson-13` and `lesson-16`

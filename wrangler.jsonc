@@ -44,14 +44,14 @@
         {
           "binding": "DB",
           "database_name": "issue-tracker-db-staging",
-          "database_id": "TODO_STAGING_DATABASE_ID"
+          "database_id": "7318aa55-c134-4a2d-9b60-c37190c38e95"
         }
       ],
-      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TODO_STAGING_OAUTH_KV_ID" }],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "33d67204c1e743db8fb063fd9e5b06bb" }],
       "vars": {
         "ENVIRONMENT": "staging",
-        "RESOURCE_URL": "https://issue-tracker-mcp-staging.YOUR_SUBDOMAIN.workers.dev/mcp",
-        "AUTH_SERVER_URL": "https://issue-tracker-mcp-staging.YOUR_SUBDOMAIN.workers.dev"
+        "RESOURCE_URL": "https://issue-tracker-mcp-staging.enhancedigital.workers.dev/mcp",
+        "AUTH_SERVER_URL": "https://issue-tracker-mcp-staging.enhancedigital.workers.dev"
       }
     },
 
@@ -68,14 +68,14 @@
         {
           "binding": "DB",
           "database_name": "issue-tracker-db-production",
-          "database_id": "TODO_PRODUCTION_DATABASE_ID"
+          "database_id": "314247dc-9d86-490a-9189-7a247820146a"
         }
       ],
-      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TODO_PRODUCTION_OAUTH_KV_ID" }],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "98e4cf32f86d431aaf8bdbb11e6214dd" }],
       "vars": {
         "ENVIRONMENT": "production",
-        "RESOURCE_URL": "https://issue-tracker-mcp-production.YOUR_SUBDOMAIN.workers.dev/mcp",
-        "AUTH_SERVER_URL": "https://issue-tracker-mcp-production.YOUR_SUBDOMAIN.workers.dev"
+        "RESOURCE_URL": "https://issue-tracker-mcp-production.enhancedigital.workers.dev/mcp",
+        "AUTH_SERVER_URL": "https://issue-tracker-mcp-production.enhancedigital.workers.dev"
       }
     }
   }
