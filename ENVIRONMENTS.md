@@ -8,6 +8,7 @@ This guide covers how the Issue Tracker MCP server is configured for its three e
 |---|---|---|---|
 | **Runs** | Your machine (`pnpm dev`) | Cloudflare | Cloudflare |
 | **Worker** | — | `issue-tracker-mcp-staging` | `issue-tracker-mcp-production` |
+| **URL** | `http://localhost:8787` | `https://staging.issue-tracker.course-projects.ai-web.dev` | `https://issue-tracker.course-projects.ai-web.dev` |
 | **D1 database** | `issue-tracker-db` (local SQLite in `.wrangler/state`) | `issue-tracker-db-staging` | `issue-tracker-db-production` |
 | **OAuth KV (grants, tokens)** | local, in `.wrangler/state` | `OAUTH_KV` (staging namespace) | `OAUTH_KV` (production namespace) |
 | **Secrets live in** | `.dev.vars` | `wrangler secret` (staging) | `wrangler secret` (production) |
@@ -123,15 +124,28 @@ Then create the KV namespace that holds OAuth grants and tokens, and paste its `
 npx wrangler kv namespace create OAUTH_KV --env staging
 ```
 
-### 2. Fill In the URLs
+### 2. Choose the Hostname
 
-Find your workers.dev subdomain in the dashboard under **Workers & Pages**, shown as *Subdomain* on the right. Replace `YOUR_SUBDOMAIN` in `env.staging.vars`:
+Each hosted environment is served on its own hostname, attached to the Worker as a [Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/). Pick a hostname in a zone that's on the same Cloudflare account as the Worker, with no existing DNS record. On deploy, Cloudflare creates the DNS record and the certificate for you. This project uses `staging.issue-tracker.course-projects.ai-web.dev` and `issue-tracker.course-projects.ai-web.dev`. Swap in your own:
 
 ```jsonc
-"RESOURCE_URL": "https://issue-tracker-mcp-staging.<subdomain>.workers.dev/mcp",
+"staging": {
+  "workers_dev": false,
+  "routes": [{ "pattern": "staging.issue-tracker.example.com", "custom_domain": true }],
+  ...
+  "vars": {
+    "ENVIRONMENT": "staging",
+    "RESOURCE_URL": "https://staging.issue-tracker.example.com/mcp",
+    "AUTH_SERVER_URL": "https://staging.issue-tracker.example.com"
+  }
+}
 ```
 
 `RESOURCE_URL` must match the deployed URL **exactly**, including `/mcp` and with no trailing slash. It's compared against the `aud` claim of every token. A mismatch means every request fails with `401 Token resource mismatch`.
+
+`workers_dev: false` turns off the `*.workers.dev` URL. The Host check only serves the host in `RESOURCE_URL`, so the workers.dev URL could only ever answer `403`.
+
+> **Changing the hostname later** changes the OAuth issuer and token audience. Existing sessions stop working, and every client has to remove the server, add the new URL and sign in again. Persona passwords don't change.
 
 ### 3. Apply the Schema and Load the Demo Data
 
@@ -169,10 +183,12 @@ pnpm deploy:staging
 
 The dry-run prints the bindings table. Check that `env.DB` points at `issue-tracker-db-staging` and that `ENVIRONMENT` is `"staging"`.
 
+The deploy output lists the Custom Domain under the triggers. On the first deploy to a new hostname, Cloudflare still has to issue the certificate, so HTTPS requests can fail for a minute or two.
+
 ### 6. Verify
 
 ```bash
-URL=https://issue-tracker-mcp-staging.<subdomain>.workers.dev
+URL=https://staging.issue-tracker.course-projects.ai-web.dev
 
 # Unauthenticated MCP request → 401 with a WWW-Authenticate header
 curl -i -X POST $URL/mcp
@@ -182,6 +198,9 @@ curl $URL/.well-known/oauth-protected-resource/mcp
 
 # Dev token endpoint → 404 (disabled outside development)
 curl -i -X POST $URL/auth/dev-token
+
+# The workers.dev URL is off → Cloudflare's own error, not a response from the Worker
+curl -i https://issue-tracker-mcp-staging.<subdomain>.workers.dev/mcp
 ```
 
 Then sign in end to end with Claude Code:
@@ -286,5 +305,7 @@ That's the whole procedure, with no script to run. Each token records a fingerpr
 | Login fails with "This app could not be verified." | The client's Client ID Metadata Document couldn't be fetched (it's private, unreachable, or the `global_fetch_strictly_public` flag blocked a private address) | Check the client's `client_id` URL is public. Clients can still register through `/oauth/register` instead. |
 | "Incorrect persona or password." with the right password | That persona's `PERSONA_PASSWORD_*` isn't set in this environment | `npx wrangler secret list --env <env>`, then `secret put` the missing one |
 | `403 Forbidden: unexpected Host` on every request | The request's host doesn't match the host in `RESOURCE_URL` (DNS-rebinding protection) | Set `RESOURCE_URL` to exactly the deployed URL, or to the local port you're actually using |
-| `403` with `error code: 1050` on every path, and `wrangler tail` shows no requests | Cloudflare Zero Trust Access protects the account's `*.workers.dev` hosts, so the edge blocks requests before the Worker runs | In Zero Trust → Access → Applications, add a self-hosted app for exactly this Worker's hostname with a **Bypass / Everyone** policy. MCP clients can't complete an Access login; the server's own OAuth is the auth layer. |
+| `403` with `error code: 1050` on every path, and `wrangler tail` shows no requests | A Cloudflare Zero Trust Access application covers this hostname (often a wildcard such as `*.example.com`), so the edge blocks requests before the Worker runs | In Zero Trust → Access → Applications, add a self-hosted app for exactly this hostname with a **Bypass / Everyone** policy. MCP clients can't complete an Access login; the server's own OAuth is the auth layer. |
+| TLS or handshake errors right after the first deploy to a new hostname | The Custom Domain's certificate is still being issued | Wait a minute or two and retry. If it persists, check the Worker's **Settings → Domains & Routes** in the dashboard |
+| Deploy fails saying the hostname already has a DNS record | A Custom Domain can't take over an existing record | Delete the old record in the zone's DNS settings, then deploy again |
 | `pnpm dev` says port 8787 is in use | Another `wrangler dev` is still running | Stop it, or `pnpm dev --port 8788` and set `RESOURCE_URL` in `.dev.vars` to match |

@@ -157,7 +157,7 @@ Your instructor gives you the passwords for the hosted server. Locally they're w
 ### 1. Connect with no token
 
 ```bash
-claude mcp add --transport http issue-tracker https://issue-tracker-mcp-staging.<subdomain>.workers.dev/mcp
+claude mcp add --transport http issue-tracker https://staging.issue-tracker.course-projects.ai-web.dev/mcp
 ```
 
 Then run `/mcp` in Claude Code and choose **Authenticate**. Here is what happens, and each step is part of the MCP spec:
@@ -400,11 +400,11 @@ This is correct behavior. Era detection is based on the **request body**, not a 
 
 ## Environments & Deployment
 
-| Environment | Runs | Deploy |
-|-------------|------|--------|
-| `development` | Locally, `pnpm dev` | Never |
-| `staging` | Cloudflare, `issue-tracker-mcp-staging` | `pnpm deploy:staging` |
-| `production` | Cloudflare, `issue-tracker-mcp-production` | `pnpm deploy:production` |
+| Environment | Runs | URL | Deploy |
+|-------------|------|-----|--------|
+| `development` | Locally, `pnpm dev` | `http://localhost:8787` | Never |
+| `staging` | Cloudflare, `issue-tracker-mcp-staging` | `https://staging.issue-tracker.course-projects.ai-web.dev` | `pnpm deploy:staging` |
+| `production` | Cloudflare, `issue-tracker-mcp-production` | `https://issue-tracker.course-projects.ai-web.dev` | `pnpm deploy:production` |
 
 Each hosted environment has its own Worker, D1 database and `AUTH_SECRET`. `/auth/dev-token` only exists in development.
 

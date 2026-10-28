@@ -10,7 +10,7 @@ async function call(request: Request, bindings: typeof env = env): Promise<Respo
   return response;
 }
 
-const STAGING_URL = 'https://issue-tracker-mcp-staging.example.workers.dev';
+const STAGING_URL = 'https://staging.issue-tracker.example.test';
 
 describe('deployment-environments: requests to the configured hostname are served', () => {
   it('accepts the hosted hostname when it matches RESOURCE_URL', async () => {
